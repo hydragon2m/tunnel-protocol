@@ -26,7 +26,7 @@ const (
 
 	// ====== Stream ======
 	ErrCodeStreamNotFound ErrorCode = 3001
-	ErrCodeStreamClosed  ErrorCode = 3002
+	ErrCodeStreamClosed   ErrorCode = 3002
 )
 
 /*
