@@ -19,15 +19,20 @@ func Encode(w io.Writer, f *Frame) error {
 	}
 
 	// Header: Magic(2) + Version(1) + Type(1) + Flags(1) + StreamID(4) = HeaderSize bytes
-	// Length = số byte đọc tiếp theo, KHÔNG bao gồm chính length field
 	length := uint32(HeaderSize + len(f.Payload))
 	if length > MaxFrameSize {
 		return NewError(ErrCodeFrameTooLarge, "frame too large")
 	}
 
-	// Use a logical buffer size: 4 (length) + length (rest of frame)
+	// Use pooled buffer if possible
 	totalSize := 4 + int(length)
-	buf := make([]byte, totalSize)
+	var buf []byte
+	if totalSize <= DefaultBufferSize {
+		buf = GetBuffer(totalSize)
+		defer PutBuffer(buf)
+	} else {
+		buf = make([]byte, totalSize)
+	}
 
 	// 1. Length (4 bytes)
 	binary.BigEndian.PutUint32(buf[0:4], length)
@@ -46,15 +51,10 @@ func Encode(w io.Writer, f *Frame) error {
 
 	// 5. Payload
 	if len(f.Payload) > 0 {
-		copy(buf[13:], f.Payload)
+		copy(buf[13:13+len(f.Payload)], f.Payload)
 	}
 
-	// Atomic Write: Write everything in one syscall
-	// Note: w.Write might still return partial write if underlying socket buffer is full,
-	// but for small frames this is much better than 5 separate syscalls.
-	// For full atomicity on network, we rely on the OS TCP stack coalescing, but sending
-	// one block gives it the best chance.
-	_, err := w.Write(buf)
+	_, err := w.Write(buf[:totalSize])
 	return err
 }
 

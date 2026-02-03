@@ -19,17 +19,6 @@ func NewBufferPool() *BufferPool {
 		pool: sync.Pool{
 			New: func() interface{} {
 				// Allocate a new buffer of default size
-				b := make([]byte, DefaultBufferSize)
-				return &b // Return pointer to slice to avoid allocation on interface conversion? No, slice is small.
-				// standard pattern: return new([]byte) ?
-				// Actually, just return interface{} which is []byte
-				// But sync.Pool stores interface{}.
-				// Let's store *[]byte to be safe/easy or just []byte.
-				// Storing []byte directly causes alloc on Put/Get due to interface boxing.
-				// Storing *[]byte avoids that.
-				// However, changing the slice cap/len might be tricky if shared.
-				// Let's stick to simple []byte for now and optimize later if needed,
-				// or better: a struct wrapper?
 				return make([]byte, DefaultBufferSize)
 			},
 		},
